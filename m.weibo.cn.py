@@ -3,10 +3,15 @@
 '''
 Required
 - requests (必须)
-Info
+Login Info
 - author : "xchaoinfo"
 - email  : "xchaoinfo@qq.com"
 - date   : "2016.4.8"
+
+Spider Info
+- author : "juno chen"
+- email  : "jun.chenying@gmail.com"
+- date   : "2016.9.13"
 
 3.4 遇到一些问题，于 4.8 号解决。
 这里遇到的问题是 跨域请求时候， headers 中的 Host 不断变化的问题，需要针对
@@ -24,6 +29,8 @@ import urllib.request
 from PIL import Image
 from bs4 import BeautifulSoup
 import time
+import random
+from time import gmtime, strftime
 import os
 try:
     from urllib.parse import quote_plus
@@ -167,7 +174,7 @@ def get_weibo_data():
     print("total page:",pageNum)
 
     # 单页url
-    for page in range(1,pageNum+1):
+    for page in range(1,3):
         url = 'http://weibo.cn/u/%d?page=%d'%(user_id,page)
         print(url)
         ht = session.get(url)
@@ -179,6 +186,10 @@ def get_weibo_data():
         for imgurl in urllist:
             img_get = session.get(imgurl['href'])
             urllist_set.add(img_get.url)
+        # sleep 
+        sleep_time = random.randrange(5, 10)
+        print("current time: ",strftime("%Y-%m-%d %H:%M:%S", gmtime()) ,"sleep %d seconds" % sleep_time)
+        time.sleep(sleep_time)
 
     if not urllist_set:
         print('该页面中不存在图片')
@@ -189,6 +200,7 @@ def get_weibo_data():
         os.mkdir(image_path)
 
     x=1
+    image_count = 0
     for imgurl in urllist_set:
         temp= image_path + '/%s.jpg' % x
         print('正在下载第%s张图片' % x)
@@ -197,6 +209,7 @@ def get_weibo_data():
             with urllib.request.urlopen(imgurl) as response, open(temp, 'wb') as out_file:
                 data = response.read() # a `bytes` object
                 out_file.write(data)
+            image_count += 1
         except:
             print("该图片下载失败:%s"%imgurl)
         x+=1
