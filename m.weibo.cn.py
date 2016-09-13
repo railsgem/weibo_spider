@@ -20,7 +20,11 @@ import base64
 import time
 import math
 import random
+import urllib.request
 from PIL import Image
+from bs4 import BeautifulSoup
+import time
+import os
 try:
     from urllib.parse import quote_plus
 except:
@@ -48,6 +52,8 @@ session = requests.session()
 # 访问登录的初始页面
 index_url = "https://passport.weibo.cn/signin/login"
 session.get(index_url, headers=headers)
+urllist_set = set()
+image_count = 1
 
 
 def get_su(username):
@@ -146,13 +152,58 @@ def login(username, password, pincode):
     # print(session.cookies)
     pa = r'<title>(.*?)</title>'
     res = re.findall(pa, ht.text)
+    # print(ht.text)
     print("你好%s，你正在使用 xchaoinfo 写的模拟登录" % res[0])
     # print(cn, com, mcn)
 
+def get_weibo_data():
+    user_id = 1751035982
+    url = 'http://weibo.cn/u/%d?filter=1&page=1'%user_id
+    ht = session.get(url)
+    soup = BeautifulSoup(ht.text, "lxml")
+    print(soup.prettify())
+    # 总页数
+    pageNum = soup.find('input', {'name': 'mp'}).get('value')
+    print("total page:",pageNum)
+
+    # 单页url
+    for page in range(1,pageNum+1):
+        url = 'http://weibo.cn/u/%d?page=%d'%(user_id,page)
+        print(url)
+        ht = session.get(url)
+        soup = BeautifulSoup(ht.text, "lxml")
+
+        # 获取所有微博图片
+        urllist = soup.find_all('a',href=re.compile(r'^http://weibo.cn/mblog/oripic',re.I))
+        first = 0
+        for imgurl in urllist:
+            img_get = session.get(imgurl['href'])
+            urllist_set.add(img_get.url)
+
+    if not urllist_set:
+        print('该页面中不存在图片')
+    else:
+        #下载图片,保存在当前目录的pythonimg文件夹下
+        image_path=os.getcwd()+'/weibo_image'
+    if os.path.exists(image_path) is False:
+        os.mkdir(image_path)
+
+    x=1
+    for imgurl in urllist_set:
+        temp= image_path + '/%s.jpg' % x
+        print('正在下载第%s张图片' % x)
+        try:
+            # Download the file from `url` and save it locally under `file_name`:
+            with urllib.request.urlopen(imgurl) as response, open(temp, 'wb') as out_file:
+                data = response.read() # a `bytes` object
+                out_file.write(data)
+        except:
+            print("该图片下载失败:%s"%imgurl)
+        x+=1
+    print('微博图片爬取完毕，共%d张，保存路径%s'%(image_count-1,image_path))
 
 if __name__ == "__main__":
 
-    username = "你的用户名"
-    password = "你的密码"
     pincode = login_pre(username)
     login(username, password, pincode)
+    get_weibo_data()
